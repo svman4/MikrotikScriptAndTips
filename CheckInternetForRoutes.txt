@@ -1,0 +1,68 @@
+# Κάνει ping στο 8.8.8.8 για να δει αν υπάρχει τελικά σύνδεση στο internet.
+# Για να λειτουργήσει θα πρέπει να δημιουργηθούν static routes με routing Mark που θα δοθεί παρακάτω στο κώδικα (Αλλιώς δε λειτουργεί το ping).
+# Επίσης θα πρέπει να δημιουργηθούν σχόλια σε κάθε μια από τα route που θέλουμε να απενεργοποιηθούν.
+
+# Ο παρακάτω κώδικας έλέγχει μέσω του route-table "testCyta" αν υπάρχει internet.
+# Αν υπάρχει ενεργοποιεί όλα τα route που υπάρχουν στα routes με σχόλιο "cytaRoute".
+
+# Μετά ελέγχει μέσω του routing-table "test2" αν υπάρχει internet.
+#Αν υπάρχει ενεργοποιεί ή απενεργοποιεί όλα τα routes με σχόλιο "testRoute".
+
+#26/04/2021 By Manos Gerakianakis
+
+
+:local pingTest do={
+	if ([/ping routing-table=$routingTable \
+			count=$count \
+			address=$host]>=$count) do={
+		:return true;
+	} else {
+		:return false;
+	}
+} 
+
+:local controlInterface do={
+	if ($accessFlag=true) do={
+		[/ip route enable [find comment=$commentForControlRoute ]];
+      :put "enable comment=$commentForControlRoute ";
+	} else {
+		:put "disable comment=$commentForControlRoute";
+		[ip route disable [find comment=$commentForControlRoute]];
+    }
+}
+# end of functions
+
+
+
+:local testIp "8.8.8.8";
+
+
+:local routingMark "testCyta";
+:local commentForControlRoute "cytaRoute";
+:local accessFlag \
+	[$pingTest \
+		routingTable=$routingMark \
+		count=2 \
+		host=$testIp
+	];
+
+
+$controlInterface \  
+	accessFlag=$accessFlag \
+	commentForControlRoute=$commentForControlRoute;
+
+
+:local routingMark "test2";
+:local commentForControlRoute "testRoute";
+:local accessFlag \
+	[$pingTest \
+		routingTable=$routingMark \
+		count=2 \
+		host=$testIp
+	];
+
+
+$controlInterface \  
+	accessFlag=$accessFlag \
+	commentForControlRoute=$commentForControlRoute;
+
