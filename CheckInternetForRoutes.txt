@@ -6,55 +6,55 @@
 # Αν υπάρχει ενεργοποιεί όλα τα route που υπάρχουν στα routes με σχόλιο "cytaRoute".
 
 # Μετά ελέγχει μέσω του routing-table "test2" αν υπάρχει internet.
-#Αν υπάρχει ενεργοποιεί ή απενεργοποιεί όλα τα routes με σχόλιο "testRoute".
-
+# Αν υπάρχει ενεργοποιεί ή απενεργοποιεί όλα τα routes με σχόλιο "testRoute".
+# Βελτίωση κώδικα (26/04/2021)
+# Στην συνάρτηση controlInterface ελέγχει πρώτα αν είναι disable ή όχι. Και ανάλογα τροποποιεί ή όχι την κατάσταση. Η βελτίωση έγινε κυρίως για να μην γεμίζει το Log με μηνύματα αλλαγής του route.
 #26/04/2021 By Manos Gerakianakis
 
 
+# ---------Start of functions -----------------------------------------
 :local pingTest do={
-	if ([/ping routing-table=$routingTable \
+	:if (
+		[/ping routing-table=$routingTable \
 			count=$count \
-			address=$host]>=$count) do={
+			address=$host\
+		] >=$count) do={
 		:return true;
 	} else {
 		:return false;
 	}
 } 
-
-:local controlInterface do={
-	if ($accessFlag=true) do={
-		[/ip route enable [find comment=$commentForControlRoute ]];
-      :put "enable comment=$commentForControlRoute ";
-	} else {
-		:put "disable comment=$commentForControlRoute";
-		[ip route disable [find comment=$commentForControlRoute]];
+#------------------------------------------------------------------------------
+:global foundDisableRouteWithComment do={
+    :foreach rout in [/ip route find comment=$commentForControlRoute] do= {
+		:if ([/ip route get $rout disabled]=true) do={
+			:return true;
+         }
     }
+   :return false;
+}
+#-------------------------------------------------------------------------------
+:local controlInterface do={
+	:global foundDisableRouteWithComment;
+	:local isInterfaceDisabled [$foundDisableRouteWithComment \
+									commentForControlRoute=$commentForControlRoute];
+	if ($accessFlag=true && $isInterfaceDisabled=true) do={
+		[/ip route enable [find comment=$commentForControlRoute ]];
+		put "enable comment=$commentForControlRoute ";
+	} 
+    if ($accessFlag=false && $isInterfaceDisabled=false) do={
+		put "disable comment=$commentForControlRoute";
+		[/ip route disable [find comment=$commentForControlRoute ]];
+	}
 }
 # end of functions
 
+local testIp "8.8.8.8";
 
+local routingMark "testCyta";
+local commentForControlRoute "cytaRoute";
 
-:local testIp "8.8.8.8";
-
-
-:local routingMark "testCyta";
-:local commentForControlRoute "cytaRoute";
-:local accessFlag \
-	[$pingTest \
-		routingTable=$routingMark \
-		count=2 \
-		host=$testIp
-	];
-
-
-$controlInterface \  
-	accessFlag=$accessFlag \
-	commentForControlRoute=$commentForControlRoute;
-
-
-:local routingMark "test2";
-:local commentForControlRoute "testRoute";
-:local accessFlag \
+local accessFlag \
 	[$pingTest \
 		routingTable=$routingMark \
 		count=2 \
